@@ -1,115 +1,158 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
+import plotly.figure_factory as ff
 
+st.set_page_config(page_title="Análisis Estadístico - UP Chiapas", layout="wide")
+
+# --- DISEÑO MIDNIGHT AURORA (CSS) ---
 st.markdown("""
     <style>
-    /* Fondo principal: Azul pizarra muy oscuro y elegante */
+    /* 1. FONDO TOTAL */
     .stApp {
-        background-color: #0B0F19;
+        background-color: #0B0F19 !important;
     }
-    
-    /* Panel lateral: Ligeramente más claro para dar profundidad */
-    [data-testid="stSidebar"] {
-        background-color: #111827;
-        border-right: 1px solid #1F2937;
+
+    /* 2. FORZAR BRILLO EN MÉTRICAS */
+    [data-testid="stMetric"] {
+        background-color: #1E293B !important;
+        border: 1px solid #38BDF8 !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+        opacity: 1 !important;
     }
-    
-    /* Títulos: Efecto de texto con gradiente (Cian a Púrpura) */
+
+    [data-testid="stMetricLabel"] p {
+        color: #38BDF8 !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stMetricValue"] div {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+        font-size: 2rem !important;
+        opacity: 1 !important;
+    }
+
+    /* 3. TÍTULOS Y TEXTO GENERAL */
     h1, h2, h3 {
         background: -webkit-linear-gradient(45deg, #38BDF8, #818CF8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-family: 'Helvetica Neue', sans-serif;
-        font-weight: 700;
-        padding-bottom: 10px;
     }
     
-    /* Texto normal más legible en fondos oscuros */
-    p, li, .stRadio > label {
-        color: #94A3B8 !important;
+    p, li, label {
+        color: #E2E8F0 !important;
     }
-    
-    /* Tarjetas de información y métricas (donde saldrán tus resultados) */
-    [data-testid="stMetric"], .stAlert {
+
+    /* 4. SIDEBAR */
+    [data-testid="stSidebar"] {
+        background-color: #020617 !important;
+    }
+
+    /* 5. ARREGLO PARA MENÚS DESPLEGABLES (NUEVO) */
+    div[data-baseweb="popover"] {
         background-color: #1E293B !important;
-        border-radius: 10px;
-        border: 1px solid #334155;
     }
     
-    /* Botones: Diseño limpio con efecto al pasar el mouse */
-    .stButton>button {
-        background-color: #1E293B;
-        color: #38BDF8;
-        border: 1px solid #38BDF8;
-        border-radius: 6px;
-        transition: all 0.3s ease;
+    div[data-baseweb="popover"] li {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
     }
-    .stButton>button:hover {
-        background-color: #38BDF8;
-        color: #0B0F19;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+
+    div[data-baseweb="popover"] li:hover {
+        background-color: #38BDF8 !important;
+        color: #0B0F19 !important;
+    }
+
+    div[data-baseweb="popover"] ul {
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Configuración de la página
-st.set_page_config(page_title="App Estadística - Datos", layout="wide")
-
-st.title(" Fase 2: Módulo de Gestión de Datos")
-st.markdown("---")
-
-# Sidebar para configuración
-st.sidebar.header("Configuración de Datos")
-metodo_datos = st.sidebar.radio(
-    "Selecciona el origen de los datos:",
-    ["Subir archivo CSV", "Generar datos aleatorios"]
+# --- NAVEGACIÓN ---
+modulo = st.sidebar.radio(
+    "Módulos del Proyecto",
+    ["📂 Carga de datos", "📊 Visualización", "🔬 Prueba de hipótesis", "🤖 Asistente IA"]
 )
 
-df = None
+# --- MÓDULO 1: CARGA DE DATOS ---
+if modulo == "📂 Carga de datos":
+    st.header("Carga y Gestión de Datos")
+    fuente = st.radio("Fuente de datos", ["Subir CSV", "Generar datos sintéticos"])
 
-# Lógica de Carga de Datos
-if metodo_datos == "Subir archivo CSV":
-    archivo_subido = st.file_uploader("Carga tu archivo .csv aquí", type=["csv"])
-    if archivo_subido is not None:
-        df = pd.read_csv(archivo_subido)
-        st.success("✅ Archivo cargado con éxito.")
-else:
-    # Generación de datos sintéticos (Útil para pruebas rápidas)
-    st.sidebar.subheader("Parámetros de datos sintéticos")
-    n_puntos = st.sidebar.slider("Número de datos", 30, 500, 100)
-    media_sintetica = st.sidebar.number_input("Media deseada", value=100.0)
-    desv_sintetica = st.sidebar.number_input("Desviación estándar", value=15.0)
-    
-    if st.sidebar.button("Generar Datos"):
-        datos = np.random.normal(loc=media_sintetica, scale=desv_sintetica, size=n_puntos)
-        df = pd.DataFrame({"Valores": datos})
-        st.info(f"✨ Se generaron {n_puntos} datos aleatorios.")
-
-# Visualización y Validación (Solo si hay datos cargados)
-if df is not None:
-    st.header(" Vista Previa y Resumen Estadístico")
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("Primeros registros")
-        st.write(df.head(10))
-    
-    with col2:
-        st.subheader("Estadísticas descriptivas")
-        # Esto calcula automáticamente media, mediana, min, max, etc.
-        st.write(df.describe())
-        
-    # Selección de columna para futuros pasos
-    columnas_num = df.select_dtypes(include=[np.number]).columns.tolist()
-    if columnas_num:
-        st.session_state['columna_seleccionada'] = st.selectbox(
-            "Selecciona la columna para el análisis:", 
-            columnas_num
-        )
+    if fuente == "Subir CSV":
+        archivo = st.file_uploader("Sube tu archivo CSV", type=["csv"])
+        if archivo:
+            df = pd.read_csv(archivo)
+            st.session_state["df"] = df
+            st.success("✅ Archivo cargado correctamente")
     else:
-        st.error("⚠️ El archivo no contiene columnas numéricas.")
-else:
-    st.warning("Aún no hay datos. Por favor, sube un archivo o genera datos en el menú lateral.")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            distribucion = st.selectbox("Tipo de Distribución", ["Normal", "Sesgada (Exponencial)", "Uniforme"])
+        with col2:
+            n = st.slider("Tamaño de muestra (n)", 30, 500, 100)
+        with col3:
+            semilla = st.number_input("Semilla", value=42)
 
+        if st.button("Generar Datos"):
+            np.random.seed(int(semilla))
+            if "Normal" in distribucion:
+                datos = np.random.normal(loc=50, scale=10, size=n)
+            elif "Sesgada" in distribucion:
+                datos = np.random.exponential(scale=10, size=n) + 30
+            else:
+                datos = np.random.uniform(low=20, high=80, size=n)
+            
+            st.session_state["df"] = pd.DataFrame({"valor": datos})
+            st.info(f"✨ Datos generados con éxito ({distribucion})")
+
+    if "df" in st.session_state:
+        st.subheader("Vista Previa")
+        st.dataframe(st.session_state["df"].head(10), use_container_width=True)
+
+# --- MÓDULO 2: VISUALIZACIÓN (FASE 3 - HOY) ---
+elif modulo == "📊 Visualización":
+    st.header("Análisis Visual de la Distribución")
+    
+    if "df" in st.session_state:
+        df = st.session_state["df"]
+        columnas_num = df.select_dtypes(include=[np.number]).columns.tolist()
+        variable = st.selectbox("Selecciona la variable a graficar:", columnas_num)
+
+        col_izq, col_der = st.columns(2)
+
+        with col_izq:
+            st.subheader("Histograma y Densidad")
+            # Usamos Plotly para que sea interactivo
+            fig_hist = px.histogram(df, x=variable, marginal="box", 
+                                  title=f"Distribución de {variable}",
+                                  color_discrete_sequence=['#38BDF8'])
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+        with col_der:
+            st.subheader("Gráfico de Probabilidad (Violín)")
+            fig_violin = px.violin(df, y=variable, box=True, points="all",
+                                 title=f"Dispersión y Outliers de {variable}",
+                                 color_discrete_sequence=['#818CF8'])
+            st.plotly_chart(fig_violin, use_container_width=True)
+
+        # Análisis rápido para el reporte
+        st.divider()
+        st.subheader("Métricas Críticas")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Media", f"{df[variable].mean():.2f}")
+        m2.metric("Desviación Estándar", f"{df[variable].std():.2f}")
+        m3.metric("Sesgo (Skewness)", f"{df[variable].skew():.2f}")
+    else:
+        st.warning("⚠️ Primero carga datos en el módulo anterior.")
+
+# --- MÓDULOS EN DESARROLLO ---
+else:
+    st.info(f"Módulo {modulo} en desarrollo.")

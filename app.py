@@ -4,6 +4,12 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy import stats
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+API_KEY = os.getenv("GEMINI_API_KEY")
 
 st.set_page_config(page_title="Análisis Estadístico - UP Chiapas", layout="wide")
 
@@ -296,4 +302,81 @@ elif modulo == "🔬 Prueba de hipótesis":
 # --- MÓDULO 4: ASISTENTE IA ---
 elif modulo == "🤖 Asistente IA":
     st.header("Asistente con IA (Gemini)")
-    st.info("Módulo en desarrollo — Viernes 18")
+    st.markdown("Análisis estadístico asistido por inteligencia artificial")
+
+    if "resultado_z" not in st.session_state:
+        st.warning("⚠️ Primero ejecuta una prueba Z en el módulo anterior.")
+    elif not API_KEY:
+        st.error("❌ No se encontró la API Key en el archivo .env")
+    else:
+        r = st.session_state["resultado_z"]
+
+        st.subheader("Resumen de la prueba realizada")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Variable", r["variable"])
+        c2.metric("Z calculado", f"{r['z_obs']:.4f}")
+        c3.metric("p-value", f"{r['p_value']:.4f}")
+
+        st.divider()
+        st.subheader("Tu decisión")
+        decision_usuario = st.radio(
+            "¿Cuál es tu conclusión sobre H₀?",
+            ["Rechazo H₀", "No rechazo H₀"]
+        )
+
+        if st.button("Consultar a Gemini 🪄"):
+            decision_app = "Se rechaza H₀" if r["rechazar"] else "No se rechaza H₀"
+
+            prompt = f"""
+Se realizó una prueba Z con los siguientes parámetros:
+- Variable analizada: {r['variable']}
+- Media muestral (x̄): {r['x_bar']:.4f}
+- Media hipotética (μ₀): {r['mu0']}
+- Tamaño de muestra (n): {r['n']}
+- Desviación estándar poblacional (σ): {r['sigma']}
+- Nivel de significancia (α): {r['alpha']}
+- Tipo de prueba: {r['tipo']}
+- Estadístico Z calculado: {r['z_obs']:.4f}
+- p-value: {r['p_value']:.4f}
+- Decisión automática de la app: {decision_app}
+
+¿Se rechaza H₀? Explica la decisión en términos simples,
+comenta si los supuestos de la prueba Z son razonables
+dado el tamaño de muestra, y da una interpretación
+práctica del resultado en máximo 150 palabras.
+"""
+
+            with st.spinner("Consultando a Gemini..."):
+                try:
+                    genai.configure(api_key=API_KEY)
+                    modelo = genai.GenerativeModel("gemini-2.0-flash")
+                    respuesta = modelo.generate_content(prompt)
+
+                    st.divider()
+                    st.subheader("Interpretación de la IA")
+                    st.info(respuesta.text)
+
+                    st.divider()
+                    st.subheader("Verificación de resultados")
+
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.markdown("**Tu decisión:**")
+                        st.latex(r"H_0" + (r"\text{ rechazada}" if decision_usuario == "Rechazo H₀" else r"\text{ no rechazada}"))
+                    with col_b:
+                        st.markdown("**Resultado estadístico:**")
+                        if r["rechazar"]:
+                            st.latex(r"H_0 \text{ rechazada} \quad (p < \alpha)")
+                        else:
+                            st.latex(r"H_0 \text{ no rechazada} \quad (p \geq \alpha)")
+
+                    st.divider()
+                    if (decision_usuario == "Rechazo H₀" and r["rechazar"]) or \
+                       (decision_usuario == "No rechazo H₀" and not r["rechazar"]):
+                        st.balloons()
+                        st.success("🎯 ¡Correcto! Tu análisis coincide con la evidencia estadística.")
+                    else:
+                        st.warning("⚠️ Hay una discrepancia. Recuerda: si p-value < α, se rechaza H₀.")
+
+                except Exception as e:
+                    st.error(f"Error al conectar con Gemini: {e}")

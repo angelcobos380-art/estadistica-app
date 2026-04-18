@@ -10,6 +10,8 @@ import google.generativeai as genai
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
+#API_KEY = "gsk_zr...2SFft" .strip()
+
 
 st.set_page_config(page_title="Análisis Estadístico - UP Chiapas", layout="wide")
 
@@ -34,7 +36,7 @@ st.markdown("""
     }
     [data-testid="stMetricValue"] div {
         color: #FFFFFF !important;
-        font-weight: 800 !important;
+        font-weight: 800 !important;    
         font-size: 2rem !important;
         opacity: 1 !important;
     }
@@ -327,6 +329,7 @@ elif modulo == "🤖 Asistente IA":
         if st.button("Consultar a Gemini 🪄"):
             decision_app = "Se rechaza H₀" if r["rechazar"] else "No se rechaza H₀"
 
+            # 1. El Prompt se queda, es vital
             prompt = f"""
 Se realizó una prueba Z con los siguientes parámetros:
 - Variable analizada: {r['variable']}
@@ -346,19 +349,23 @@ dado el tamaño de muestra, y da una interpretación
 práctica del resultado en máximo 150 palabras.
 """
 
-            with st.spinner("Consultando a Gemini..."):
+            with st.spinner("Consultando IA..."):
                 try:
-                    genai.configure(api_key=API_KEY)
-                    modelo = genai.GenerativeModel("gemini-2.0-flash")
-                    respuesta = modelo.generate_content(prompt)
+                    from groq import Groq
+                    cliente = Groq(api_key=API_KEY)
+                    respuesta = cliente.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=300
+                    )
+                    texto_ia = respuesta.choices[0].message.content
 
                     st.divider()
                     st.subheader("Interpretación de la IA")
-                    st.info(respuesta.text)
+                    st.info(texto_ia)
 
                     st.divider()
                     st.subheader("Verificación de resultados")
-
                     col_a, col_b = st.columns(2)
                     with col_a:
                         st.markdown("**Tu decisión:**")
@@ -379,4 +386,4 @@ práctica del resultado en máximo 150 palabras.
                         st.warning("⚠️ Hay una discrepancia. Recuerda: si p-value < α, se rechaza H₀.")
 
                 except Exception as e:
-                    st.error(f"Error al conectar con Gemini: {e}")
+                    st.error(f"Error inesperado: {e}")
